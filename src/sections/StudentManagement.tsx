@@ -13,7 +13,8 @@ import {
   Building2,
   Phone,
   Mail,
-  Calendar
+  Calendar,
+  LogOut
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -50,6 +51,7 @@ import {
   createStudent,
   updateStudent,
   deleteStudent,
+  exitStudent,
   getRooms,
   updateRoom,
   getBuildings,
@@ -100,6 +102,8 @@ export default function StudentManagement() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
+  const [exitDate, setExitDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [formData, setFormData] = useState<StudentFormData>(initialFormData);
@@ -247,6 +251,25 @@ export default function StudentManagement() {
       console.error('Error deleting student:', error);
       toast.error('Failed to delete student');
     }
+  };
+
+  const handleExitStudent = async () => {
+    if (!selectedStudent) return;
+    try {
+      await exitStudent(selectedStudent.id, selectedStudent.room_id || null, exitDate);
+      toast.success('Student exited and room is now available');
+      setIsExitDialogOpen(false);
+      setSelectedStudent(null);
+      fetchData();
+    } catch (error) {
+      console.error('Error exiting student:', error);
+      toast.error('Failed to exit student');
+    }
+  };
+
+  const openExitDialog = (student: Student) => {
+    setSelectedStudent(student);
+    setIsExitDialogOpen(true);
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -553,6 +576,13 @@ export default function StudentManagement() {
                               Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem
+                              onClick={() => openExitDialog(student)}
+                              className="text-[#e37400] focus:text-[#e37400] focus:bg-orange-500/10"
+                            >
+                              <LogOut className="w-4 h-4 mr-2" />
+                              Exit Student
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
                               onClick={() => openDeleteDialog(student)}
                               className="text-destructive focus:text-destructive focus:bg-destructive/10"
                             >
@@ -603,7 +633,7 @@ export default function StudentManagement() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Student</DialogTitle>
-            <DialogDescription>Enter student details below</DialogDescription>
+            <DialogDescription>Enter the personal and room assignment details for the new student.</DialogDescription>
           </DialogHeader>
           <Tabs defaultValue="personal" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
@@ -819,6 +849,7 @@ export default function StudentManagement() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Student</DialogTitle>
+            <DialogDescription>Update the student's personal information, emergency contact, or room assignment.</DialogDescription>
           </DialogHeader>
           <Tabs defaultValue="personal" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
@@ -1025,6 +1056,7 @@ export default function StudentManagement() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Student Details</DialogTitle>
+            <DialogDescription>Comprehensive view of the student's profile and current housing status.</DialogDescription>
           </DialogHeader>
           {selectedStudent && (
             <div className="space-y-6">
@@ -1110,6 +1142,38 @@ export default function StudentManagement() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
             <Button variant="destructive" onClick={handleDeleteStudent}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Exit Student Dialog */}
+      <Dialog open={isExitDialogOpen} onOpenChange={setIsExitDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Exit Student</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to mark <strong>{selectedStudent?.first_name} {selectedStudent?.last_name}</strong> as exited?
+              This will set their status to inactive and make the room <strong>{selectedStudent?.room?.room_number}</strong> available.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Exit Date</Label>
+              <Input
+                type="date"
+                value={exitDate}
+                onChange={(e) => setExitDate(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsExitDialogOpen(false)}>Cancel</Button>
+            <Button
+              className="bg-[#ea4335] hover:bg-[#d93025] text-white"
+              onClick={handleExitStudent}
+            >
+              Confirm Exit
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

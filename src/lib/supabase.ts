@@ -147,6 +147,52 @@ export async function deleteStudent(id: string) {
   if (error) throw error;
 }
 
+export async function exitStudent(studentId: string, roomId: string | null, exitDate: string) {
+  if (useDummyData) {
+    const sIndex = dummyStudents.findIndex(s => s.id === studentId);
+    if (sIndex !== -1) {
+      dummyStudents[sIndex] = {
+        ...dummyStudents[sIndex],
+        status: 'inactive',
+        room_id: null,
+        exit_date: exitDate,
+        updated_at: new Date().toISOString()
+      };
+    }
+    if (roomId) {
+      const rIndex = dummyRooms.findIndex(r => r.id === roomId);
+      if (rIndex !== -1) {
+        dummyRooms[rIndex].status = 'available';
+      }
+    }
+    return true;
+  }
+
+  // 1. Update student
+  const { error: studentError } = await supabase
+    .from('students')
+    .update({
+      status: 'inactive',
+      room_id: null,
+      exit_date: exitDate,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', studentId);
+
+  if (studentError) throw studentError;
+
+  // 2. Free the room if assigned
+  if (roomId) {
+    const { error: roomError } = await supabase
+      .from('rooms')
+      .update({ status: 'available' })
+      .eq('id', roomId);
+    if (roomError) throw roomError;
+  }
+
+  return true;
+}
+
 // Rooms
 export async function getRooms(filters?: { building_id?: string; status?: string }) {
   if (useDummyData) {
@@ -627,13 +673,21 @@ export async function getDashboardStats() {
 
     const monthlyRevenue = paidPayments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
 
-    // Get overdue & pending counts
-    const { count: overduePayments } = await supabase
+    // Get overdue & pending counts dynamically
+    const todayStr = now.toISOString().split('T')[0];
+
+    const { data: allPending } = await supabase
+      .from('payments')
+      .select('due_date, status')
+      .eq('status', 'pending');
+
+    const dynamicOverdue = allPending?.filter(p => p.due_date < todayStr).length || 0;
+    const { count: dbOverdue } = await supabase
       .from('payments')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'overdue');
 
-    const { count: pendingPayments } = await supabase
+    const { count: dbPending } = await supabase
       .from('payments')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'pending');
@@ -644,8 +698,8 @@ export async function getDashboardStats() {
       occupiedRooms,
       occupancyRate: totalRooms ? Math.round((occupiedRooms / totalRooms) * 100) : 0,
       monthlyRevenue,
-      overduePayments: overduePayments || 0,
-      pendingPayments: pendingPayments || 0
+      overduePayments: (dbOverdue || 0) + dynamicOverdue,
+      pendingPayments: (dbPending || 0) - dynamicOverdue
     };
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);

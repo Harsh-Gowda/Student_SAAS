@@ -13,9 +13,24 @@ import {
 } from 'lucide-react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription
+} from '@/components/ui/sheet';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Toaster } from 'sonner';
 
 // Sections
@@ -30,7 +45,7 @@ import StaffManagement from '@/sections/StaffManagement';
 import { useAuth } from '@/contexts/AuthContext';
 import Auth from '@/sections/Auth';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { dummyPayments } from '@/lib/dummyData';
+import { getDashboardStats } from '@/lib/supabase';
 
 const navigation = [
   { name: 'Dashboard', icon: LayoutDashboard, id: 'dashboard' },
@@ -53,14 +68,19 @@ function App() {
   });
 
   useEffect(() => {
-    // Calculate stats from dummy data
-    const overdue = dummyPayments.filter(p => p.status === 'overdue').length;
-    const pending = dummyPayments.filter(p => p.status === 'pending').length;
-    setStats({
-      overduePayments: overdue,
-      pendingPayments: pending
-    });
-  }, []);
+    const fetchSidebarStats = async () => {
+      try {
+        const dashboardStats = await getDashboardStats();
+        setStats({
+          overduePayments: dashboardStats.overduePayments,
+          pendingPayments: dashboardStats.pendingPayments
+        });
+      } catch (error) {
+        console.error('Error fetching sidebar stats:', error);
+      }
+    };
+    fetchSidebarStats();
+  }, [activeSection]);
 
   if (loading) {
     return (
@@ -93,7 +113,7 @@ function App() {
   const renderSection = () => {
     switch (activeSection) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard onNavigate={(id) => setActiveSection(id)} />;
       case 'students':
         return <StudentManagement />;
       case 'rooms':
@@ -166,28 +186,42 @@ function App() {
           })}
         </nav>
 
-        <div className="p-4 border-t border-border space-y-4">
-          <div className="flex items-center gap-3 px-3 py-2 bg-muted/30 rounded-xl">
-            <Avatar className="w-8 h-8 border border-border">
-              <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
-                {user.email?.[0].toUpperCase() || 'A'}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground truncate">
-                {user.user_metadata?.first_name ? `${user.user_metadata.first_name}` : 'Admin'}
-              </p>
-              <p className="text-[10px] text-muted-foreground truncate font-medium uppercase tracking-wider">{user.user_metadata?.role || 'Staff'}</p>
-            </div>
-            <div className="flex items-center gap-1">
-              <ThemeToggle />
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive h-8 w-8" onClick={signOut}>
-                <LogOut className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
       </aside>
+
+      {/* Desktop Header / Profile */}
+      <header className="hidden lg:flex fixed top-0 right-0 p-4 z-40">
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-10 w-10 p-0 rounded-full border border-border shadow-sm">
+                <Avatar className="w-9 h-9">
+                  <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
+                    {user.email?.[0].toUpperCase() || 'A'}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 mt-2">
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">
+                    {user.user_metadata?.first_name ? `${user.user_metadata.first_name}` : 'Admin User'}
+                  </p>
+                  <p className="text-xs leading-none text-muted-foreground">
+                    {user.email}
+                  </p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive">
+                <LogOut className="w-4 h-4 mr-2" />
+                <span>Log Out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
 
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 bg-card border-b border-border z-50">
@@ -201,12 +235,44 @@ function App() {
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-10 w-10 p-0 rounded-full border border-border shadow-sm">
+                  <Avatar className="w-9 h-9">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
+                      {user.email?.[0].toUpperCase() || 'A'}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 mt-2">
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">
+                      {user.user_metadata?.first_name ? `${user.user_metadata.first_name}` : 'Admin User'}
+                    </p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user.email}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  <span>Log Out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-10 w-10">
                   <Menu className="w-6 h-6" />
                 </Button>
               </SheetTrigger>
+              <SheetHeader className="sr-only">
+                <SheetTitle>Navigation Menu</SheetTitle>
+                <SheetDescription>Main navigation for the application</SheetDescription>
+              </SheetHeader>
               <SheetContent side="right" className="w-72 p-0 bg-card border-l-border">
                 <div className="flex flex-col h-full bg-card">
                   <div className="p-6 border-b border-border">
@@ -234,7 +300,7 @@ function App() {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 lg:ml-64 pt-16 lg:pt-0">
+      <main className="flex-1 lg:ml-64 pt-16 mt-2 lg:mt-0">
         <div className="p-4 lg:p-8">
           <Routes>
             <Route path="/dashboard" element={renderSection()} />

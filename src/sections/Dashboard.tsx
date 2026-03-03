@@ -14,8 +14,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  BarChart,
-  Bar,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -62,7 +62,11 @@ interface RecentStudent {
 
 const COLORS = ['#1a73e8', '#34a853', '#fbbc04', '#ea4335'];
 
-export default function Dashboard() {
+export interface DashboardProps {
+  onNavigate?: (id: string) => void;
+}
+
+export default function Dashboard({ onNavigate }: DashboardProps) {
   const [stats, setStats] = useState<DashboardStats>({
     totalStudents: 0,
     totalRooms: 0,
@@ -226,6 +230,7 @@ export default function Dashboard() {
           trend="up"
           trendValue="+12% this month"
           color="#1a73e8"
+          onClick={() => onNavigate?.('students')}
         />
         <StatCard
           title="Occupancy Rate"
@@ -235,6 +240,7 @@ export default function Dashboard() {
           trend={stats.occupancyRate > 80 ? 'up' : 'neutral'}
           trendValue={stats.occupancyRate > 80 ? 'High occupancy' : 'Room for growth'}
           color="#34a853"
+          onClick={() => onNavigate?.('rooms')}
         />
         <StatCard
           title="Monthly Revenue"
@@ -244,6 +250,7 @@ export default function Dashboard() {
           trend="up"
           trendValue="On track"
           color="#fbbc04"
+          onClick={() => onNavigate?.('rent')}
         />
         <StatCard
           title="Overdue Payments"
@@ -253,6 +260,7 @@ export default function Dashboard() {
           trend={stats.overduePayments > 0 ? 'down' : 'up'}
           trendValue={stats.overduePayments > 0 ? 'Action needed' : 'All caught up'}
           color="#ea4335"
+          onClick={() => onNavigate?.('rent')}
         />
       </div>
 
@@ -266,29 +274,54 @@ export default function Dashboard() {
           <CardContent>
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={revenueData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e8eaed" />
+                <AreaChart data={revenueData}>
+                  <defs>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                   <XAxis
                     dataKey="month"
-                    stroke="#5f6368"
+                    stroke="hsl(var(--muted-foreground))"
                     fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
                   />
                   <YAxis
-                    stroke="#5f6368"
+                    stroke="hsl(var(--muted-foreground))"
                     fontSize={12}
                     tickFormatter={(value) => `₹${value / 1000}k`}
+                    tickLine={false}
+                    axisLine={false}
                   />
                   <Tooltip
-                    formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Revenue']}
-                    contentStyle={{
-                      backgroundColor: 'white',
-                      border: '1px solid #dadce0',
-                      borderRadius: '8px'
+                    cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1 }}
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-card border border-border p-3 rounded-xl shadow-xl">
+                            <p className="text-xs font-bold text-muted-foreground uppercase mb-1">{label}</p>
+                            <p className="text-sm font-bold text-foreground">
+                              ₹{payload[0].value?.toLocaleString()}
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
                     }}
                   />
-                  <Bar dataKey="revenue" fill="#1a73e8" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="target" fill="#e8f0fe" radius={[4, 4, 0, 0]} />
-                </BarChart>
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={3}
+                    fillOpacity={1}
+                    fill="url(#colorRevenue)"
+                    animationDuration={1500}
+                  />
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
