@@ -23,6 +23,9 @@ export default function Auth({ initialRole }: AuthProps) {
 
     useEffect(() => {
         setIsMounted(true);
+        if (initialRole) {
+            setRole(initialRole);
+        }
         // Handle invitation email from URL
         const params = new URLSearchParams(window.location.search);
         const emailParam = params.get('email');
@@ -207,7 +210,7 @@ export default function Auth({ initialRole }: AuthProps) {
                                     </CardTitle>
                                     <CardDescription className="font-bold text-muted-foreground text-sm mt-1">
                                         {authMode === 'login'
-                                            ? `Access your ${role} dashboard securely.`
+                                            ? `Access your ${role === 'admin' ? 'admin' : 'student'} dashboard securely.`
                                             : 'Scale your administrative impact today.'}
                                     </CardDescription>
                                 </div>
