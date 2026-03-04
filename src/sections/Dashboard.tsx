@@ -14,8 +14,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  AreaChart,
-  Area,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -274,11 +274,11 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           <CardContent>
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={revenueData}>
+                <LineChart data={revenueData}>
                   <defs>
                     <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#1a73e8" stopOpacity={0.1} />
+                      <stop offset="95%" stopColor="#1a73e8" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -297,31 +297,42 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                     axisLine={false}
                   />
                   <Tooltip
-                    cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1 }}
                     content={({ active, payload, label }) => {
                       if (active && payload && payload.length) {
                         return (
                           <div className="bg-card border border-border p-3 rounded-xl shadow-xl">
                             <p className="text-xs font-bold text-muted-foreground uppercase mb-1">{label}</p>
-                            <p className="text-sm font-bold text-foreground">
-                              ₹{payload[0].value?.toLocaleString()}
-                            </p>
+                            {payload.map((entry: any, index: number) => (
+                              <p key={index} className="text-sm font-bold" style={{ color: entry.color }}>
+                                {entry.name}: ₹{entry.value?.toLocaleString()}
+                              </p>
+                            ))}
                           </div>
                         );
                       }
                       return null;
                     }}
                   />
-                  <Area
+                  <Line
                     type="monotone"
                     dataKey="revenue"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={3}
-                    fillOpacity={1}
-                    fill="url(#colorRevenue)"
+                    name="Revenue"
+                    stroke="#1a73e8"
+                    strokeWidth={4}
+                    dot={{ fill: '#1a73e8', strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 6, strokeWidth: 0, fill: '#1a73e8' }}
                     animationDuration={1500}
                   />
-                </AreaChart>
+                  <Line
+                    type="monotone"
+                    dataKey="target"
+                    name="Trend"
+                    stroke="#f97316"
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    dot={false}
+                  />
+                </LineChart>
               </ResponsiveContainer>
             </div>
           </CardContent>

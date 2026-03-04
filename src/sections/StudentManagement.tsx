@@ -166,6 +166,33 @@ export default function StudentManagement() {
     move_in_date: data.move_in_date || null,
   });
 
+  const initiateRentTracking = useCallback(async (studentId: string, roomId: string, moveInDateStr: string) => {
+    const assignedRoom = rooms.find(r => r.id === roomId);
+    if (!assignedRoom) return;
+
+    const moveInDate = new Date(moveInDateStr);
+    const dueDateObj = new Date(moveInDate);
+    dueDateObj.setMonth(dueDateObj.getMonth() + 1);
+    const dueDate = dueDateObj.toISOString().split('T')[0];
+
+    try {
+      await createPayment({
+        student_id: studentId,
+        room_id: roomId,
+        amount: assignedRoom.monthly_rent || 0,
+        due_date: dueDate,
+        status: 'pending',
+        payment_method: null,
+        transaction_id: null,
+        notes: 'Initial rent scheduled for one month after move-in'
+      });
+      toast.success('Rent tracking started - first payment due ' + dueDateObj.toLocaleDateString());
+    } catch (paymentError) {
+      console.error('Error creating initial payment:', paymentError);
+      toast.error('Could not initiate rent tracking. Check Rent Tracking section.');
+    }
+  }, [rooms]);
+
   const handleAddStudent = async () => {
     try {
       const cleaned = cleanFormData(formData);
@@ -176,29 +203,9 @@ export default function StudentManagement() {
         await updateRoom(cleaned.room_id, { status: 'occupied' });
       }
 
-      // Auto-create first payment if a room is assigned
-      if (cleaned.room_id && newStudent?.id) {
-        const assignedRoom = rooms.find(r => r.id === cleaned.room_id);
-        if (assignedRoom) {
-          const now = new Date();
-          const dueDate = new Date(now.getFullYear(), now.getMonth() + 1, 1); // 1st of next month
-          try {
-            await createPayment({
-              student_id: newStudent.id,
-              room_id: cleaned.room_id,
-              amount: assignedRoom.monthly_rent || 0,
-              due_date: dueDate.toISOString().split('T')[0],
-              status: 'pending',
-              payment_method: null,
-              transaction_id: null,
-              notes: 'Auto-generated on student registration'
-            });
-            toast.success('Rent tracking started - first payment due ' + dueDate.toLocaleDateString());
-          } catch (paymentError) {
-            console.error('Error creating initial payment:', paymentError);
-            toast.error('Student added but rent payment could not be created. Check Rent Tracking.');
-          }
-        }
+      // Auto-create first payment if a room and move-in date are assigned
+      if (cleaned.room_id && cleaned.move_in_date && newStudent?.id) {
+        await initiateRentTracking(newStudent.id, cleaned.room_id, cleaned.move_in_date);
       }
 
       toast.success('Student added successfully', {
@@ -243,6 +250,11 @@ export default function StudentManagement() {
       if (oldRoomId !== newRoomId) {
         if (oldRoomId) await updateRoom(oldRoomId, { status: 'available' });
         if (newRoomId) await updateRoom(newRoomId, { status: 'occupied' });
+      }
+
+      // Trigger rent tracking if move_in_date is newly added
+      if (!selectedStudent.move_in_date && cleaned.move_in_date && cleaned.room_id) {
+        await initiateRentTracking(selectedStudent.id, cleaned.room_id, cleaned.move_in_date);
       }
 
       await updateStudent(selectedStudent.id, cleaned);
