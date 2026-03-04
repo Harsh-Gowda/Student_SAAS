@@ -153,7 +153,7 @@ export async function exitStudent(studentId: string, roomId: string | null, exit
     if (sIndex !== -1) {
       dummyStudents[sIndex] = {
         ...dummyStudents[sIndex],
-        status: 'inactive',
+        status: 'exited',
         room_id: null,
         exit_date: exitDate,
         updated_at: new Date().toISOString()
@@ -172,7 +172,7 @@ export async function exitStudent(studentId: string, roomId: string | null, exit
   const { error: studentError } = await supabase
     .from('students')
     .update({
-      status: 'inactive',
+      status: 'exited',
       room_id: null,
       exit_date: exitDate,
       updated_at: new Date().toISOString()

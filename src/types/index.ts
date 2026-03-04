@@ -12,7 +12,7 @@ export interface Student {
   emergency_contact_relation: string;
   room_id: string | null;
   move_in_date: string | null;
-  status: 'active' | 'inactive' | 'pending';
+  status: 'active' | 'inactive' | 'pending' | 'exited';
   exit_date?: string | null;
   user_id?: string;
   created_at: string;
@@ -130,7 +130,7 @@ export interface StudentFormData {
   room_id: string;
   move_in_date: string;
   exit_date?: string | null;
-  status: 'active' | 'inactive' | 'pending';
+  status: 'active' | 'inactive' | 'pending' | 'exited';
 }
 
 export interface RoomFormData {

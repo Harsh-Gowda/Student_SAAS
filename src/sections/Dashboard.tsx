@@ -116,7 +116,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
       // Fetch recent students
       const students = await getStudents();
-      const recentStuds = students?.slice(0, 5).map((s: any) => ({
+      const recentStuds = students?.filter((s: any) => s.status !== 'exited').slice(0, 5).map((s: any) => ({
         id: s.id,
         name: `${s.first_name} ${s.last_name}`,
         room_number: s.room?.room_number || 'Not assigned',

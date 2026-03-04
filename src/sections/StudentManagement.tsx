@@ -55,7 +55,8 @@ import {
   getRooms,
   updateRoom,
   getBuildings,
-  createPayment
+  createPayment,
+  createEmailLog
 } from '@/lib/supabase';
 import type { Student, Room, Building } from '@/types';
 
@@ -71,7 +72,7 @@ interface StudentFormData {
   emergency_contact_relation: string;
   room_id: string;
   move_in_date: string;
-  status: 'active' | 'inactive' | 'pending';
+  status: 'active' | 'inactive' | 'pending' | 'exited';
 }
 
 const initialFormData: StudentFormData = {
@@ -200,7 +201,28 @@ export default function StudentManagement() {
         }
       }
 
-      toast.success('Student added successfully');
+      toast.success('Student added successfully', {
+        description: `Login Details: Email: ${cleaned.email}, ID: ${cleaned.student_id}`,
+        duration: 8000
+      });
+
+      // Log the credential sharing "email" for later SMTP implementation
+      if (newStudent?.id) {
+        try {
+          await createEmailLog({
+            recipient_email: cleaned.email,
+            recipient_name: `${cleaned.first_name} ${cleaned.last_name}`,
+            subject: 'Your Student Portal Login Credentials',
+            template_type: 'custom',
+            status: 'pending',
+            student_id: newStudent.id,
+            error_message: 'Email sending queued (waiting for SMTP connection)'
+          });
+        } catch (logError) {
+          console.error('Error logging invitation:', logError);
+        }
+      }
+
       setIsAddDialogOpen(false);
       setFormData(initialFormData);
       fetchData();
@@ -398,7 +420,8 @@ export default function StudentManagement() {
     const styles = {
       active: 'bg-green-500/10 text-green-600 border-green-500/20',
       inactive: 'bg-destructive/10 text-destructive border-destructive/20',
-      pending: 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+      pending: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+      exited: 'bg-gray-500/10 text-gray-600 border-gray-500/20'
     };
     return (
       <Badge variant="outline" className={cn("font-bold", styles[status as keyof typeof styles] || styles.pending)}>
@@ -473,6 +496,7 @@ export default function StudentManagement() {
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="inactive">Inactive</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="exited">Exited</SelectItem>
               </SelectContent>
             </Select>
             <Select value={buildingFilter} onValueChange={setBuildingFilter}>
@@ -664,6 +688,7 @@ export default function StudentManagement() {
                       <SelectItem value="active">Active</SelectItem>
                       <SelectItem value="inactive">Inactive</SelectItem>
                       <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="exited">Exited</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -879,6 +904,7 @@ export default function StudentManagement() {
                       <SelectItem value="active">Active</SelectItem>
                       <SelectItem value="inactive">Inactive</SelectItem>
                       <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="exited">Exited</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1153,7 +1179,7 @@ export default function StudentManagement() {
             <DialogTitle>Exit Student</DialogTitle>
             <DialogDescription>
               Are you sure you want to mark <strong>{selectedStudent?.first_name} {selectedStudent?.last_name}</strong> as exited?
-              This will set their status to inactive and make the room <strong>{selectedStudent?.room?.room_number}</strong> available.
+              This will set their status to <strong>exited</strong> and make the room <strong>{selectedStudent?.room?.room_number}</strong> available.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
